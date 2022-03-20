@@ -1,4 +1,6 @@
 #include "workServer.h"
+#define DATABASE_USER "ljl"
+#define DATABASE_PWD "123456"
 
 #ifndef MAX_FD
 #define MAX_FD 65536
@@ -39,7 +41,7 @@ workServer::workServer():ptheard_(nullptr),epollfd_(-1)
 	httpConns_ = new httpConn[MAX_FD];
 
 	pSqlPool_ = sqlConnPool::getInstance();
-	pSqlPool_->init("localhost","root","3383918","test",0,15,0);	
+	pSqlPool_->init("localhost",DATABASE_USER,DATABASE_PWD,"test",0,15,0);	
 }
 
 

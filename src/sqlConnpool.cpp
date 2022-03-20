@@ -44,7 +44,7 @@ void sqlConnPool::init(std::string url,std::string user,std::string pwd,std::str
 		con = mysql_real_connect(con,url_.c_str(),user_.c_str(),pwd_.c_str(),dbName_.c_str(),port_,NULL,0);
 		if(!con)
 		{
-			LOG_ERROR("mysql_real_connect error!\n");
+			LOG_ERROR("uname=%s,pwd=%s,mysql_real_connect error!\n",user_.c_str(),pwd_.c_str());
 			return ;
 		}
 
