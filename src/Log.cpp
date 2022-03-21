@@ -29,22 +29,21 @@ void MyLog::AppendBuf()
 	unsigned int unrealThisLogSize = strlen(clogBuf_) ;
 
 	std::lock_guard<std::mutex> lock(mlogFileBuf);
-	//当前缓冲区容纳不下本次的日志字符串，需要先把原本的日志写到日志文件
-	if (nbufLastIdx + unrealThisLogSize >= LOG_BUF_SIZE )
+	if(unrealThisLogSize < sizeof(ctmpLogFileBuf) && unrealThisLogSize >0 )
 	{
 		{
 			std::lock_guard<std::mutex> lock(mufile_);
-			ctmpLogFileBuf[LOG_BUF_SIZE - 1] = '\0';
+			memcpy(ctmpLogFileBuf,clogBuf_,sizeof(ctmpLogFileBuf));
+			ctmpLogFileBuf[unrealThisLogSize + 1] = '\0';
 			fputs(ctmpLogFileBuf, fplogFile_);
 			fflush(fplogFile_);
 			nbufLastIdx = 0;
 		}
 	}
-	memcpy(ctmpLogFileBuf + nbufLastIdx, clogBuf_, unrealThisLogSize);
-	nbufLastIdx += unrealThisLogSize;
 
 	//这一句使得每一次冲出 都不会重复冲出之前缓冲区的内容 
 	ctmpLogFileBuf[nbufLastIdx] = '\0';
+	//printf("ctmpLogFileBuf:%s\n",ctmpLogFileBuf);
 }
 
 bool MyLog::LogInit(int maxBlockSize)
@@ -53,7 +52,7 @@ bool MyLog::LogInit(int maxBlockSize)
 	memset(cdirName_, '\0', sizeof(cdirName_));
 	memset(cfileName_, '\0', sizeof(cfileName_));
 	memset(clogBuf_, '\0', sizeof(clogBuf_));
-	memcpy(cdirName_, "asd", 255);
+	memcpy(cdirName_, "server_", 255);
 
 	memset(ctmpLogFileBuf, '\0', sizeof(ctmpLogFileBuf));
 
@@ -75,5 +74,49 @@ bool MyLog::LogInit(int maxBlockSize)
 	ntoday_ = nday;
 	return true;
 
+}
+
+bool MyLog::newWriteLog(const char *fmt, ...)
+{
+	time_t tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+	struct tm &tm = *localtime(&tt);
+
+	int ntoday = (tm.tm_mday);
+	int nmonth = (tm.tm_mon + 1);
+	int nyear = (tm.tm_year + 1900);
+
+	if (ntoday != ntoday_
+		|| nmonth != nmonth_
+		|| nyear != nyear_)
+	{
+		std::lock_guard<std::mutex> lock(mufile_);
+		ntoday_ = ntoday;
+		nmonth_ = nmonth;
+		nyear_ = nyear;
+		memset(cfileName_, '\0', sizeof(cfileName_));
+		snprintf(cfileName_, 255, "%s%d_%02d_%02d%s", cdirName_, nyear, nmonth, ntoday, ".log");
+		fplogFile_ = fopen(cfileName_, "a");
+		if (!fplogFile_)
+		{
+			return false;
+		}
+	}
+
+	char s[256];
+	memset(s,'\0',sizeof(s));
+	va_list ap;
+    int n=0;
+    va_start(ap,fmt);
+    n=vsnprintf(s,sizeof(s),fmt,ap);
+    va_end(ap);
+	std::string tmp = s;
+	{
+		std::lock_guard<std::mutex> lock(mlogBuf);
+		memset(clogBuf_, '\0', sizeof(clogBuf_));
+		snprintf(clogBuf_,sizeof(clogBuf_)-1, "%04d-%02d-%02d  %02d:%02d:%02d  %s\n", nyear, nmonth, ntoday, tm.tm_hour, tm.tm_min, tm.tm_sec, tmp.c_str());
+		AppendBuf();
+	}
+
+    return n;
 }
 

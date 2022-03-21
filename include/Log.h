@@ -5,11 +5,13 @@
 #include <string.h>
 #include <sstream>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <mutex>
+#include <vector>
 
 #ifndef LOG_BUF_SIZE
-#define LOG_BUF_SIZE 100		
+#define LOG_BUF_SIZE 2048	
 #endif 
 
 class MyLog
@@ -28,6 +30,8 @@ public:
 	template<class Level, class... Args>
 	bool WriteLog(Level level, Args... args);
 
+	bool newWriteLog(const char *fmt, ...);
+
 	/*不定参构成日志字符串*/
 	template<class Level, class... Args>
 	std::string AddString(Level level, Args... args);
@@ -44,7 +48,7 @@ private:
 	char 											ctmpLogFileBuf[LOG_BUF_SIZE];	//待写入日志文件的缓冲区
 	char 											cdirName_[256];					//路径名
 	char 											cfileName_[256];				//Log文件名
-	char 											clogBuf_[256];					//Log日志内容
+	char 											clogBuf_[1024];					//Log日志内容
 	
 	std::mutex 										mufile_;						//互斥访问文件指针		
 	std::mutex 										mlogBuf;						//互斥访问clogBuf
@@ -56,6 +60,8 @@ private:
 	int 											nbufLastIdx;					//指向缓冲区结尾位置
 	FILE 											*fplogFile_;					//指向日志文件指针
 	
+	//std::string 									slog;				
+	//std::string 									slog2;
 	//bool 										bcanWriteFile;								//指示线程是否可以进行文件的写
 	//std::shared_ptr<std::thread>	pWriteLogThread;					//异步写入日志文件
 	//std::condition_variable 			cv;												//唤醒线程写文件
@@ -66,11 +72,14 @@ std::string MyLog::AddString(Level level, Args... args)
 {
 	std::stringstream ss;
 	ss << level;
+	//std::string tmp = ss.str();
 	std::string slog = ss.str();
 	slog += AddString(args...);
+	printf("slog:%s\n",slog.c_str());
 	return slog;
 }
 
+/*废弃版本*/
 template<class Level, class... Args>
 bool MyLog::WriteLog(Level level, Args... args)
 {
@@ -110,10 +119,14 @@ bool MyLog::WriteLog(Level level, Args... args)
 	return true;
 }
 
+#define LOG_DEBUG(...) {MyLog::GetLogInstance()->newWriteLog(__VA_ARGS__);}
+#define LOG_INFO(...) {MyLog::GetLogInstance()->newWriteLog(__VA_ARGS__);}
+#define LOG_WARNING(...) {MyLog::GetLogInstance()->newWriteLog(__VA_ARGS__);}
+#define LOG_ERROR(...) {MyLog::GetLogInstance()->newWriteLog(__VA_ARGS__);}
 
-#define LOG_DEBUG(...) {MyLog::GetLogInstance()->WriteLog("[Debug]:", ##__VA_ARGS__);}
-#define LOG_INFO(...) {MyLog::GetLogInstance()->WriteLog("[Info]:", ##__VA_ARGS__);}
-#define LOG_WARNING(...) {MyLog::GetLogInstance()->WriteLog("[Warning]:", ##__VA_ARGS__);}
-#define LOG_ERROR(...) {MyLog::GetLogInstance()->WriteLog("[Error]:", ##__VA_ARGS__);}
+// #define LOG_DEBUG(...) {MyLog::GetLogInstance()->newWriteLog("[Debug]:", ##__VA_ARGS__);}
+// #define LOG_INFO(...) {MyLog::GetLogInstance()->newWriteLog("[Info]:", ##__VA_ARGS__);}
+// #define LOG_WARNING(...) {MyLog::GetLogInstance()->newWriteLog("[Warning]:", ##__VA_ARGS__);}
+// #define LOG_ERROR(...) {MyLog::GetLogInstance()->newWriteLog("[Error]:", ##__VA_ARGS__);}
 
 #endif
