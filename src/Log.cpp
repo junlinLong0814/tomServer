@@ -2,6 +2,7 @@
 
 MyLog::MyLog() :fplogFile_(nullptr), nbufLastIdx(0)
 {
+	
 }
 
 MyLog::~MyLog()
@@ -19,31 +20,26 @@ MyLog::~MyLog()
 	}
 }
 
-std::string MyLog::AddString()
-{
-	return "\n";
-}
 
 void MyLog::AppendBuf()
 {
-	unsigned int unrealThisLogSize = strlen(clogBuf_) ;
+	int nRealThisLogSize = strlen(clogBuf_) ;
 
-	std::lock_guard<std::mutex> lock(mlogFileBuf);
-	if(unrealThisLogSize < sizeof(ctmpLogFileBuf) && unrealThisLogSize >0 )
+	std::lock_guard<std::mutex> locklogbuf(mlogFileBuf);
+	std::lock_guard<std::mutex> lockfile(mufile_);
+	int nBufLastIdx=0;
+	while(nRealThisLogSize != 0)
 	{
-		{
-			std::lock_guard<std::mutex> lock(mufile_);
-			memcpy(ctmpLogFileBuf,clogBuf_,sizeof(ctmpLogFileBuf));
-			ctmpLogFileBuf[unrealThisLogSize + 1] = '\0';
-			fputs(ctmpLogFileBuf, fplogFile_);
-			fflush(fplogFile_);
-			nbufLastIdx = 0;
-		}
+		int nThisFlushSize = std::min((int)nRealThisLogSize,(int)sizeof(ctmpLogFileBuf));
+		memcpy(ctmpLogFileBuf,clogBuf_+nBufLastIdx,nThisFlushSize);
+		//预防非法访址
+		ctmpLogFileBuf[nThisFlushSize-1]='\0';
+		fputs(ctmpLogFileBuf, fplogFile_);
+		fflush(fplogFile_);
+		nBufLastIdx += nThisFlushSize;
+		nRealThisLogSize -= nThisFlushSize;
 	}
-
-	//这一句使得每一次冲出 都不会重复冲出之前缓冲区的内容 
-	ctmpLogFileBuf[nbufLastIdx] = '\0';
-	//printf("ctmpLogFileBuf:%s\n",ctmpLogFileBuf);
+	ctmpLogFileBuf[0]='\0';
 }
 
 bool MyLog::LogInit(int maxBlockSize)
@@ -76,7 +72,7 @@ bool MyLog::LogInit(int maxBlockSize)
 
 }
 
-bool MyLog::newWriteLog(const char *fmt, ...)
+bool MyLog::newWriteLog(const char* pcFileName,const int nLine,const char* pcFunctionName,const char *fmt, ...)
 {
 	time_t tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	struct tm &tm = *localtime(&tt);
@@ -101,7 +97,7 @@ bool MyLog::newWriteLog(const char *fmt, ...)
 			return false;
 		}
 	}
-
+	//组装log实际内容
 	char s[256];
 	memset(s,'\0',sizeof(s));
 	va_list ap;
@@ -109,14 +105,15 @@ bool MyLog::newWriteLog(const char *fmt, ...)
     va_start(ap,fmt);
     n=vsnprintf(s,sizeof(s),fmt,ap);
     va_end(ap);
+	//连接函数名
 	std::string tmp = s;
+	tmp+="\n";
 	{
 		std::lock_guard<std::mutex> lock(mlogBuf);
 		memset(clogBuf_, '\0', sizeof(clogBuf_));
-		snprintf(clogBuf_,sizeof(clogBuf_)-1, "%04d-%02d-%02d  %02d:%02d:%02d  %s\n", nyear, nmonth, ntoday, tm.tm_hour, tm.tm_min, tm.tm_sec, tmp.c_str());
+		snprintf(clogBuf_,sizeof(clogBuf_)-1, "%04d-%02d-%02d  %02d:%02d:%02d [%s/%s:%d] %s\n", nyear,nmonth, ntoday, tm.tm_hour, tm.tm_min, tm.tm_sec, pcFileName,pcFunctionName,nLine,tmp.c_str());
 		AppendBuf();
 	}
 
     return n;
 }
-
