@@ -14,6 +14,8 @@ const char* linger_keep_alive = "Connection: keep-alive\r\n";
 const char* linger_closed = "Connection: close\r\n";
 const char* c_content_length = "Content-Length: ";
 const char* c_html_format = "Content-Type: text/html\r\n";
+const char* c_download_format = "Content-Type: application/octet-stream\r\n";
+const char* dc_download_disposiotion="Content-Disposition: attachment; filename=";
 const char* c_blank_row = "\r\n";
 char* c_index_html = "index.html";
 
@@ -94,7 +96,7 @@ bool httpConn::read()
             if(errno == EAGAIN || errno == EWOULDBLOCK) {break;}
             else
             {
-                printf("HttpResolver recv <%d>client errno :%d \n",httpfd_,errno);
+                LOG_ERROR("HttpResolver recv <%d>client errno :%d \n",httpfd_,errno);
             	removefd();
                 httpfd_ = -1;
                 return false;
@@ -239,6 +241,11 @@ HTTP_CODE httpConn::parse_content()
     nRowStart_ = nRowEnd_ ; 
     char* tmpContent =recvBuf_+nRowStart_;
     nRowEnd_ = strlen(tmpContent);
+    //TODO:说明还未收到一个完整的报文
+    // if(nRowEnd_ < contentLength_ )
+    // {
+    //     return INCOMPLETE_REQUEST;
+    // }
     /*post请求*/
     if(method_ == POST)
     {
@@ -250,7 +257,7 @@ HTTP_CODE httpConn::parse_content()
     	sqlConnRAII(&tmpSqlConn,sqlPool_);
         if(!tmpSqlConn)
         {
-            printf("Mysql conn error!\n");
+            LOG_ERROR("Mysql conn error!\n");
         }
 
         /*提取post正文中的 name 以及 pwd*/
@@ -267,7 +274,7 @@ HTTP_CODE httpConn::parse_content()
         int ret = mysql_query(tmpSqlConn,sqlSelect.c_str());
         if(ret!=0)
         {
-        	printf("sql select error!\n");
+        	LOG_ERROR("sql select error!\n");
         	/*返回服务器错误码*/
        		return INTERNAL_ERRNO;
        	}
@@ -470,12 +477,19 @@ bool httpConn::responseByRet(HTTP_CODE ret)
         case GET_REQUEST:
         {
             strcat(sendBuf_,ok_200_title);
-            strcat(sendBuf_,c_html_format);
-
             std::string s_fileName = "";
             ++url_;
             s_fileName = s_fileName + url_;
-            
+            if(strstr(url_,"html"))
+            {
+                strcat(sendBuf_,c_html_format);
+            }
+            else
+            {
+                strcat(sendBuf_,c_download_format);
+                std::string strDownload_disposiotion = dc_download_disposiotion+s_fileName+c_blank_row;
+                strcat(sendBuf_,strDownload_disposiotion.c_str());
+            }    
             if(s_fileName!="favicon.ico" && s_fileName.size() >= 1)
             {
                 filefd = open(url_,O_RDONLY);
@@ -518,7 +532,7 @@ bool httpConn::responseByRet(HTTP_CODE ret)
     int sndret=send(httpfd_,sendBuf_,strlen(sendBuf_),0);
     if(sndret <= 0)
     {
-        printf("HttpResolver data:%d send errno:%d\n",sndret,errno);
+        LOG_ERROR("HttpResolver data:%d send errno:%d\n",sndret,errno);
         return false;
     }
     if(filefd != -1)

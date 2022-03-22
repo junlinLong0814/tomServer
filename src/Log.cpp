@@ -75,7 +75,7 @@ bool MyLog::newWriteLog(std::string strInfoType,
 					const char* pcFileName,
 					const int nLine,
 					const char* pcFunctionName,
-					const char* time,
+					const char* pcTime,
 					const char *fmt, ...)
 {
 	time_t tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -115,7 +115,7 @@ bool MyLog::newWriteLog(std::string strInfoType,
 	{
 		std::lock_guard<std::mutex> lock(mlogBuf);
 		memset(clogBuf_, '\0', sizeof(clogBuf_));
-		snprintf(clogBuf_,sizeof(clogBuf_)-1, "%s %04d-%02d-%02d %s [%s/%s:%d] %s\n",strInfoType.c_str(),nyear,nmonth, ntoday, time, pcFileName,pcFunctionName,nLine,tmp.c_str());
+		snprintf(clogBuf_,sizeof(clogBuf_)-1, "%s %04d-%02d-%02d %s [%s/%s:%d] %s\n",strInfoType.c_str(),nyear,nmonth, ntoday, pcTime, pcFileName,pcFunctionName,nLine,tmp.c_str());
 		AppendBuf();
 	}
 

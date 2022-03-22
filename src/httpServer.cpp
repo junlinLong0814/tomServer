@@ -37,7 +37,7 @@ int httpServer::run()
 		LOG_ERROR("Listen errno : %d\n",errno);
 		return -1;
 	}
-	LOG_INFO("Port:%d,Listening...\n",port_);
+	LOG_INFO("Port:%d, Listening...\n",port_);
 	return 0;
 }
 
@@ -88,8 +88,15 @@ void httpServer::startServer()
 		clientfd_ = accept(listenfd_,(struct sockaddr*)&client_address_,&client_addrlength_);
 		if(clientfd_<0)
 		{
-			LOG_ERROR("Clientfd assigned errno : %d\n",errno);
-			break;
+			//因为connect比accept快返回，所以会出现一种情况，客户端在connect后，服务里监听到后过一段时间再accept
+			//在这段时间client发送一个rst过来，此时该client会从全链接队列删除，此时accept会block住，直至下一个新链接到来
+			//所以将监听描述符设为非block并通过errno来判断是否这种情况
+			if(errno != EWOULDBLOCK)
+			{
+				LOG_ERROR("Clientfd assigned errno : %d\n",errno);
+				break;
+			}
+			
 		}
 		LOG_INFO("%s connected...\n",inet_ntoa(client_address_.sin_addr));
 		//std::shared_ptr<Client> pClient = std::make_shared<Client>(clientfd_);	
