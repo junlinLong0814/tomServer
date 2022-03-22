@@ -6,8 +6,6 @@ httpServer::httpServer(int port):port_(port),listenfd_(-1),clientfd_(-1),epollfd
 {
 	bzero(&address_,sizeof(address_));
 	bzero(&client_address_,sizeof(client_address_));
-
-	
 }
 
 int httpServer::run()
@@ -39,7 +37,7 @@ int httpServer::run()
 		LOG_ERROR("Listen errno : %d\n",errno);
 		return -1;
 	}
-	LOG_INFO("Listening...\n");
+	LOG_INFO("Port:%d,Listening...\n",port_);
 	return 0;
 }
 
@@ -86,13 +84,14 @@ void httpServer::startServer()
 			break;
 		}
 
-		client_addrlength_ = sizeof(client_addrlength_);
+		client_addrlength_ = sizeof(client_address_);
 		clientfd_ = accept(listenfd_,(struct sockaddr*)&client_address_,&client_addrlength_);
 		if(clientfd_<0)
 		{
 			LOG_ERROR("Clientfd assigned errno : %d\n",errno);
 			break;
 		}
+		LOG_INFO("%s connected...\n",inet_ntoa(client_address_.sin_addr));
 		//std::shared_ptr<Client> pClient = std::make_shared<Client>(clientfd_);	
 		
 		assignClient(clientfd_);
