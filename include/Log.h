@@ -26,7 +26,12 @@ public:
 	/*日志初始化*/
 	bool LogInit(int maxBlockSize = 1);
 
-	bool newWriteLog(const char* pcFileName,const int nLine,const char* pcFunctionName,const char *fmt, ...);
+	bool newWriteLog(std::string strInfoType,
+					const char* pcFileName,
+					const int nLine,
+					const char* pcFunctionName,
+					const char* time,
+					const char *fmt, ...);
 
 private:
 	/*将一条日志语句加到缓冲区*/
@@ -59,10 +64,10 @@ private:
 };
 
 
-#define LOG_DEBUG(...) {MyLog::GetLogInstance()->newWriteLog(__FILE__,__LINE__,__FUNCTION__,##__VA_ARGS__ );}
-#define LOG_INFO(...) {MyLog::GetLogInstance()->newWriteLog(__FILE__,__LINE__,__FUNCTION__,##__VA_ARGS__ );}
-#define LOG_WARNING(...) {MyLog::GetLogInstance()->newWriteLog(__FILE__,__LINE__,__FUNCTION__,##__VA_ARGS__ );}
-#define LOG_ERROR(...) {MyLog::GetLogInstance()->newWriteLog(__FILE__,__LINE__,__FUNCTION__,##__VA_ARGS__ );}
+#define LOG_DEBUG(...) {MyLog::GetLogInstance()->newWriteLog("[DEBUG]:",__FILE__,__LINE__,__FUNCTION__,__TIME__,##__VA_ARGS__ );}
+#define LOG_INFO(...) {MyLog::GetLogInstance()->newWriteLog("[INFO]:",__FILE__,__LINE__,__FUNCTION__,__TIME__,##__VA_ARGS__ );}
+#define LOG_WARNING(...) {MyLog::GetLogInstance()->newWriteLog("[WARNING]:",__FILE__,__LINE__,__FUNCTION__,__TIME__,##__VA_ARGS__ );}
+#define LOG_ERROR(...) {MyLog::GetLogInstance()->newWriteLog("[ERROR]:",__FILE__,__LINE__,__FUNCTION__,__TIME__,##__VA_ARGS__ );}
 
 // #define LOG_DEBUG(...) {MyLog::GetLogInstance()->newWriteLog("[Debug]:", ##__VA_ARGS__);}
 // #define LOG_INFO(...) {MyLog::GetLogInstance()->newWriteLog("[Info]:", ##__VA_ARGS__);}

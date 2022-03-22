@@ -2,7 +2,6 @@
 
 MyLog::MyLog() :fplogFile_(nullptr), nbufLastIdx(0)
 {
-	
 }
 
 MyLog::~MyLog()
@@ -48,7 +47,7 @@ bool MyLog::LogInit(int maxBlockSize)
 	memset(cdirName_, '\0', sizeof(cdirName_));
 	memset(cfileName_, '\0', sizeof(cfileName_));
 	memset(clogBuf_, '\0', sizeof(clogBuf_));
-	memcpy(cdirName_, "server_", 255);
+	memcpy(cdirName_, "logDir/server_", 255);
 
 	memset(ctmpLogFileBuf, '\0', sizeof(ctmpLogFileBuf));
 
@@ -72,7 +71,12 @@ bool MyLog::LogInit(int maxBlockSize)
 
 }
 
-bool MyLog::newWriteLog(const char* pcFileName,const int nLine,const char* pcFunctionName,const char *fmt, ...)
+bool MyLog::newWriteLog(std::string strInfoType,
+					const char* pcFileName,
+					const int nLine,
+					const char* pcFunctionName,
+					const char* time,
+					const char *fmt, ...)
 {
 	time_t tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	struct tm &tm = *localtime(&tt);
@@ -111,7 +115,7 @@ bool MyLog::newWriteLog(const char* pcFileName,const int nLine,const char* pcFun
 	{
 		std::lock_guard<std::mutex> lock(mlogBuf);
 		memset(clogBuf_, '\0', sizeof(clogBuf_));
-		snprintf(clogBuf_,sizeof(clogBuf_)-1, "%04d-%02d-%02d  %02d:%02d:%02d [%s/%s:%d] %s\n", nyear,nmonth, ntoday, tm.tm_hour, tm.tm_min, tm.tm_sec, pcFileName,pcFunctionName,nLine,tmp.c_str());
+		snprintf(clogBuf_,sizeof(clogBuf_)-1, "%s %04d-%02d-%02d %s [%s/%s:%d] %s\n",strInfoType.c_str(),nyear,nmonth, ntoday, time, pcFileName,pcFunctionName,nLine,tmp.c_str());
 		AppendBuf();
 	}
 
